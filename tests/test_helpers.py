@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for dhir2b's pure helpers. They don't need the model weights."""
 
+import os
+
 import pytest
 
 import dhir2b
@@ -258,3 +260,47 @@ def test_update_refuses_offline(monkeypatch):
     monkeypatch.setattr(dhir2b, "OFFLINE", True)
     with pytest.raises(SystemExit, match="offline mode"):
         dhir2b.update()
+
+
+def test_prompt_label_marks_dhir2b():
+    assert dhir2b.PROMPT_LABEL == f"{dhir2b.USER}@dhir2b>"
+
+
+def _patch_purge(monkeypatch, tmp_path, kind="pipx"):
+    history = tmp_path / "history"
+    history.write_text("hi")
+    code = tmp_path / "Dhir_hyphen_2B"
+    code.mkdir()
+    (code / "modeling_dhir.py").write_text("x")
+    cache = _FakeCache()
+    monkeypatch.setattr(dhir2b, "_cached_revisions", lambda: (cache, [_FakeRev(dhir2b.REVISION, 4 * 1024**3)]))
+    monkeypatch.setattr(dhir2b, "_purge_targets", lambda: [p for p in (str(code), str(history)) if os.path.exists(p)])
+    monkeypatch.setattr(dhir2b, "_shared_blob_locks", lambda: [])
+    monkeypatch.setattr(dhir2b, "_remove_empty_package_dir", lambda: None)
+    monkeypatch.setattr(dhir2b, "_install_kind", lambda: kind)
+    return cache, history, code
+
+
+def test_purge_cancel_deletes_nothing(monkeypatch, tmp_path, capsys):
+    cache, history, code = _patch_purge(monkeypatch, tmp_path)
+    monkeypatch.setattr("builtins.input", lambda prompt: "n")
+    dhir2b.purge()
+    assert history.exists() and code.exists() and cache.strategy is None
+    assert "Cancelled" in capsys.readouterr().out
+
+
+def test_purge_confirmed_deletes_everything(monkeypatch, tmp_path, capsys):
+    cache, history, code = _patch_purge(monkeypatch, tmp_path)
+    monkeypatch.setattr("builtins.input", lambda prompt: "y")
+    dhir2b.purge()
+    assert not history.exists() and not code.exists()
+    assert cache.strategy.hashes == (dhir2b.REVISION,) and cache.strategy.executed
+    out = capsys.readouterr().out
+    assert "4.0 GB" in out and "pipx uninstall dhir2b-cli" in out
+
+
+def test_purge_yes_skips_prompt(monkeypatch, tmp_path):
+    _cache, history, _code = _patch_purge(monkeypatch, tmp_path, kind="pip")
+    monkeypatch.setattr("builtins.input", lambda prompt: pytest.fail("should not ask"))
+    dhir2b.purge(assume_yes=True)
+    assert not history.exists()

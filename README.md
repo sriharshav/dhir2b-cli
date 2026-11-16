@@ -10,7 +10,7 @@ A terminal chat for **[Dhīr 2B](https://huggingface.co/zenteiq-ai/Dhir-2B)**, Z
 dhir2b is built for Dhīr 2B only. The model, its revision, chat format and sampling settings are fixed, and there's no option to load another model.
 
 ```
-sriharshavardhan> Write a Python function to check if a number is prime
+sriharshavardhan@dhir2b> Write a Python function to check if a number is prime
 dhir>
  def is_prime(n):
      if n <= 1:
@@ -43,7 +43,7 @@ pipx ensurepath          # once, so ~/.local/bin is on your PATH (open a new ter
 pipx install git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.3
 ```
 
-To upgrade later, run `dhir2b --update` (see [Upgrading](#upgrading)). To remove it, run `pipx uninstall dhir2b-cli`.
+To upgrade later, run `dhir2b --update` (see [Upgrading](#upgrading)). To remove it, see [Uninstalling](#uninstalling).
 
 > **Avoid plain `pip install` into your main Python.** dhir2b depends on PyTorch and Hugging Face Transformers, which pull in newer versions of common packages such as pydantic 2. Installing those into a Python you use for other things can break other tools (for example, ones that need pydantic 1). pipx or a virtual environment keeps them separate.
 
@@ -70,6 +70,7 @@ dhir2b --offline                          # never use the network
 dhir2b --model-info                       # model revision in use, what's downloaded, newer one available?
 dhir2b --clean-cache                      # delete old downloaded model revisions
 dhir2b --update                           # upgrade dhir2b to the latest release
+dhir2b --purge                            # delete the model, cached model code and history (asks first)
 ```
 
 From a clone without installing: `python dhir2b.py`, which takes the same options.
@@ -87,7 +88,7 @@ From a clone without installing: `python dhir2b.py`, which takes the same option
 | `/reset` | Start a new conversation, keep the screen |
 | `/help` | List the commands |
 
-The prompt shows your login name. The startup banner shows the mode (`online` or `offline`) and device, and after each answer a dim line shows how long it took, for example:
+The prompt is your login name followed by `@dhir2b`, for example `sriharshavardhan@dhir2b>`, so it's clearly dhir2b's prompt and not your shell's. The startup banner shows the mode (`online` or `offline`) and device, and after each answer a dim line shows how long it took, for example:
 
 ```
 ⏱ 4.2 s · first token 0.5 s · 61 tokens · 16.4 tok/s · offline · mps
@@ -159,6 +160,34 @@ dhir2b uses one specific, reviewed revision of Dhīr 2B (see [Notes](#notes)), s
    It deletes only Dhīr 2B revisions that your dhir2b version no longer uses.
 
 > Don't use `hf cache prune` for this. Hugging Face's tool treats dhir2b's pinned model as unreferenced and deletes the model in use too, which means a 3.8 GB download again.
+
+## Uninstalling
+
+Removing dhir2b completely takes two commands, run in this order:
+
+```bash
+dhir2b --purge              # 1. delete the model (~3.8 GB), its cached code and your prompt history
+pipx uninstall dhir2b-cli   # 2. remove the program
+```
+
+`--purge` lists exactly what it will delete, with sizes, and asks before deleting anything (add `--yes` to skip the question). It removes the model through Hugging Face's own cache API, so the real files are deleted, including any in Hugging Face's shared blob store, not just the links to them. Your other Hugging Face models aren't touched. At the end it prints the right uninstall command for how you installed dhir2b.
+
+Then, if they apply to you:
+
+- **Offline setting:** if you added `export DHIR2B_OFFLINE=1` to your shell profile (for example `~/.zshrc`), remove that line.
+- **pipx itself:** if you installed pipx only for dhir2b, remove it with `brew uninstall pipx`, and delete the `export PATH="$PATH:$HOME/.local/bin"` line that `pipx ensurepath` added to your shell profile.
+- **A clone:** delete the cloned folder, which includes its `.venv`.
+
+**Already uninstalled the program first?** Then delete these by hand. The paths are the defaults; they move if you set `HF_HOME`:
+
+```bash
+rm -rf ~/.cache/huggingface/hub/models--zenteiq-ai--Dhir-2B
+rm -rf ~/.cache/huggingface/hub/.locks/models--zenteiq-ai--Dhir-2B
+rm -rf ~/.cache/huggingface/modules/transformers_modules/zenteiq_hyphen_ai
+rm -f ~/.dhir2b_history
+```
+
+Newer versions of huggingface_hub keep large model files in a shared store (`~/.cache/huggingface/hub/blobs/`), so deleting the model folder by hand can leave the 3.8 GB there. If no other Hugging Face tools use your cache, deleting `~/.cache/huggingface` entirely is the simplest way to be sure. Otherwise, reinstall dhir2b and run `dhir2b --purge`.
 
 ## Performance
 

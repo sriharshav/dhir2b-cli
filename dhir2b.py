@@ -275,6 +275,104 @@ def update():
     )
 
 
+def _purge_targets() -> list[str]:
+    """Small files dhir2b leaves outside the model cache, for --purge."""
+    from huggingface_hub import constants
+    from transformers.utils import HF_MODULES_CACHE
+
+    repo_folder = "models--" + MODEL_ID.replace("/", "--")
+    paths = [
+        os.path.join(constants.HF_HUB_CACHE, repo_folder),  # whatever remains of the model folder
+        os.path.join(constants.HF_HUB_CACHE, ".locks", repo_folder),  # download lock files
+        # transformers' copy of the model's custom code
+        os.path.join(HF_MODULES_CACHE, "transformers_modules", "zenteiq_hyphen_ai", "Dhir_hyphen_2B"),
+        HISTORY_FILE,  # prompt history
+    ]
+    return [p for p in paths if os.path.lexists(p)]
+
+
+def _shared_blob_locks() -> list[str]:
+    """Lock files next to the model's files in Hugging Face's shared blob store. huggingface_hub
+    deletes the shared files themselves but leaves these empty .lock files behind."""
+    from huggingface_hub import constants
+
+    blobs = os.path.join(constants.HF_HUB_CACHE, "models--" + MODEL_ID.replace("/", "--"), "blobs")
+    locks = []
+    with contextlib.suppress(OSError):
+        for name in os.listdir(blobs):
+            link = os.path.join(blobs, name)
+            if os.path.islink(link):
+                locks.append(os.path.realpath(link) + ".lock")
+    return locks
+
+
+def _remove_empty_package_dir():
+    """Remove transformers' zenteiq_hyphen_ai package folder if only empty boilerplate is left."""
+    from transformers.utils import HF_MODULES_CACHE
+
+    pkg = os.path.join(HF_MODULES_CACHE, "transformers_modules", "zenteiq_hyphen_ai")
+    with contextlib.suppress(OSError):
+        if set(os.listdir(pkg)) <= {"__init__.py", "__pycache__"}:
+            shutil.rmtree(pkg)
+
+
+def _path_size(path: str) -> int:
+    if os.path.isfile(path) or os.path.islink(path):
+        return os.lstat(path).st_size
+    total = 0
+    for root, _dirs, files in os.walk(path):
+        for f in files:
+            with contextlib.suppress(OSError):
+                total += os.lstat(os.path.join(root, f)).st_size
+    return total
+
+
+def purge(assume_yes: bool = False):
+    """Delete everything dhir2b downloaded or saved: the model, its cached code and prompt history."""
+    cache, revisions = _cached_revisions()
+    others = [p for p in _purge_targets() if not (revisions and p.endswith("models--" + MODEL_ID.replace("/", "--")))]
+    if not revisions and not others:
+        print("Nothing to purge: no Dhīr 2B model, cached model code or prompt history found.")
+    else:
+        print("This permanently deletes:")
+        if revisions:
+            # The model's files can live in Hugging Face's shared blob store; size and delete them
+            # through huggingface_hub so the real data is removed, not just the links to it.
+            size = sum(r.size_on_disk for r in revisions)
+            print(f"  {_human_size(size):>9}  Dhīr 2B model ({len(revisions)} revision(s)) in the Hugging Face cache")
+        for p in others:
+            print(f"  {_human_size(_path_size(p)):>9}  {p}")
+        print("You'd need to download the model again (~3.8 GB) to use dhir2b after this.")
+        if not assume_yes:
+            try:
+                answer = input("Delete these? [y/N] ").strip().lower()
+            except (EOFError, KeyboardInterrupt):
+                answer = ""
+            if answer not in ("y", "yes"):
+                print("Cancelled; nothing was deleted.")
+                return
+        shared_locks = _shared_blob_locks()
+        if revisions:
+            cache.delete_revisions(*(r.commit_hash for r in revisions)).execute()
+        for p in _purge_targets() + [lk for lk in shared_locks if os.path.lexists(lk)]:
+            if os.path.isdir(p) and not os.path.islink(p):
+                shutil.rmtree(p)
+            else:
+                os.remove(p)
+        _remove_empty_package_dir()
+        print("Deleted.")
+    print("\nTo remove the dhir2b program itself:")
+    kind = _install_kind()
+    if kind == "pipx":
+        print("  pipx uninstall dhir2b-cli")
+    elif kind == "pip":
+        print(f"  {sys.executable} -m pip uninstall dhir2b-cli")
+    else:
+        print("  delete the cloned folder (and its .venv)")
+    if os.environ.get("DHIR2B_OFFLINE"):
+        print("and remove the `export DHIR2B_OFFLINE=...` line from your shell profile (e.g. ~/.zshrc).")
+
+
 def load(device: str | None = None, warmup: bool = True):
     device = device or pick_device()
     mode = " (offline)" if OFFLINE else ""
@@ -676,14 +774,16 @@ def _save_history():
 
 
 USER = getpass.getuser()  # login name of whoever runs the chat
+# "<user>@dhir2b>" (like user@host) so it's clearly dhir2b's prompt, not the shell's.
+PROMPT_LABEL = f"{USER}@dhir2b>"
 
 
 def _prompt() -> str:
-    """Coloured "<user>> " prompt. The \\001/\\002 markers tell readline the colour
+    """Coloured "<user>@dhir2b> " prompt. The \\001/\\002 markers tell readline the colour
     codes take no space, so ↑/↓ and line editing redraw at the right column."""
     if not sys.stdout.isatty():
-        return f"{USER}> "
-    return f"\001\033[1;32m\002{USER}>\001\033[0m\002 "
+        return f"{PROMPT_LABEL} "
+    return f"\001\033[1;32m\002{PROMPT_LABEL}\001\033[0m\002 "
 
 
 def _new_history() -> list[dict]:
@@ -713,7 +813,7 @@ def _chat_loop(tokenizer, model, history, pending):
         print()  # blank line before each prompt (kept out of input() so libedit redraws cleanly)
         if pending is not None:
             user, pending = pending.strip(), None
-            CONSOLE.print(f"[bold green]{USER}>[/bold green] {escape(user)}", highlight=False)
+            CONSOLE.print(f"[bold green]{escape(PROMPT_LABEL)}[/bold green] {escape(user)}", highlight=False)
         else:
             try:
                 user = input(_prompt()).strip()
@@ -768,6 +868,11 @@ def main(argv: list[str] | None = None):
     )
     ap.add_argument("--clean-cache", action="store_true", help="delete old downloaded model revisions, then exit")
     ap.add_argument("--update", action="store_true", help="upgrade dhir2b to the latest release, then exit")
+    ap.add_argument(
+        "--purge", action="store_true",
+        help="delete the downloaded model, its cached code and prompt history (asks first), then exit",
+    )
+    ap.add_argument("--yes", action="store_true", help="with --purge: don't ask for confirmation")
     ap.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     args = ap.parse_args(argv)
 
@@ -782,6 +887,9 @@ def main(argv: list[str] | None = None):
         return
     if args.update:
         update()
+        return
+    if args.purge:
+        purge(assume_yes=args.yes)
         return
     try:
         tok, mdl = load(args.device)
