@@ -200,6 +200,81 @@ def clean_cache():
     print(f"Freed {_human_size(strategy.expected_freed_size)}. Revision {REVISION[:7]} (in use) is untouched.")
 
 
+REPO_URL = "https://github.com/sriharshav/dhir2b-cli"
+_LATEST_RELEASE_API = "https://api.github.com/repos/sriharshav/dhir2b-cli/releases/latest"
+
+
+def _parse_version(v: str) -> tuple[int, ...]:
+    """'v0.2.10' -> (0, 2, 10). Non-numeric parts are ignored."""
+    return tuple(int(p) for p in re.findall(r"\d+", v)[:3])
+
+
+def _latest_release() -> tuple[str, str]:
+    """(tag, release page URL) of the latest GitHub release."""
+    import urllib.request
+
+    # Python's default client header is enough for GitHub; nothing identifying is sent.
+    req = urllib.request.Request(_LATEST_RELEASE_API, headers={"Accept": "application/vnd.github+json"})
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        data = json.load(resp)
+    return data["tag_name"], data["html_url"]
+
+
+def _install_kind() -> str:
+    """How this copy of dhir2b was installed: 'pipx', 'editable' or 'pip'."""
+    if os.path.exists(os.path.join(sys.prefix, "pipx_metadata.json")):
+        return "pipx"
+    try:
+        from importlib.metadata import distribution
+
+        direct = json.loads(distribution("dhir2b-cli").read_text("direct_url.json") or "{}")
+        if direct.get("dir_info", {}).get("editable"):
+            return "editable"
+    except Exception:  # not installed as a package (e.g. `python dhir2b.py` from a clone)
+        return "editable"
+    return "pip"
+
+
+def _update_command(kind: str, tag: str) -> list[str] | None:
+    """The command that installs `tag` the same way dhir2b is installed now."""
+    spec = f"git+{REPO_URL}.git@{tag}"
+    if kind == "pipx":
+        pipx = shutil.which("pipx")
+        return [pipx, "install", "--force", spec] if pipx else None
+    if kind == "pip":
+        return [sys.executable, "-m", "pip", "install", "--upgrade", spec]
+    return None  # editable: a git clone, updated with git pull
+
+
+def update():
+    """Upgrade dhir2b to the latest GitHub release, the same way it was installed."""
+    if OFFLINE:
+        sys.exit("Can't check for updates in offline mode. Unset DHIR2B_OFFLINE / drop --offline and retry.")
+    try:
+        tag, url = _latest_release()
+    except Exception as e:
+        sys.exit(f"Couldn't check for updates ({type(e).__name__}: {e}). See {REPO_URL}/releases")
+    if _parse_version(tag) <= _parse_version(__version__):
+        print(f"dhir2b {__version__} is up to date (latest release: {tag}).")
+        return
+    print(f"Updating dhir2b {__version__} -> {tag}  ({url})")
+    kind = _install_kind()
+    if kind == "editable":
+        print("This is a development copy (git clone). Update it with:\n  git pull")
+        return
+    cmd = _update_command(kind, tag)
+    if cmd is None:
+        sys.exit(f"pipx not found on PATH. Run:\n  pipx install --force git+{REPO_URL}.git@{tag}")
+    print("Running: " + " ".join(cmd))
+    result = subprocess.run(cmd)
+    if result.returncode != 0:
+        sys.exit(f"Update failed (exit code {result.returncode}). Nothing was changed if pip/pipx stopped early.")
+    print(
+        f"\nUpdated to {tag}. If the release notes say the model changed, the next online run downloads it;\n"
+        "afterwards, `dhir2b --clean-cache` frees the space used by the old one."
+    )
+
+
 def load(device: str | None = None, warmup: bool = True):
     device = device or pick_device()
     mode = " (offline)" if OFFLINE else ""
@@ -692,6 +767,7 @@ def main(argv: list[str] | None = None):
         help="show the model revision in use, what's downloaded, and whether a newer one exists",
     )
     ap.add_argument("--clean-cache", action="store_true", help="delete old downloaded model revisions, then exit")
+    ap.add_argument("--update", action="store_true", help="upgrade dhir2b to the latest release, then exit")
     ap.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     args = ap.parse_args(argv)
 
@@ -703,6 +779,9 @@ def main(argv: list[str] | None = None):
         return
     if args.clean_cache:
         clean_cache()
+        return
+    if args.update:
+        update()
         return
     try:
         tok, mdl = load(args.device)

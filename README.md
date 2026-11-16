@@ -40,10 +40,10 @@ Install with [pipx](https://pipx.pypa.io), which gives dhir2b its own isolated e
 ```bash
 brew install pipx        # macOS; on Linux: python3 -m pip install --user pipx
 pipx ensurepath          # once, so ~/.local/bin is on your PATH (open a new terminal after)
-pipx install git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.2
+pipx install git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.3
 ```
 
-To remove it later, run `pipx uninstall dhir2b-cli`. To upgrade, see [Upgrading](#upgrading).
+To upgrade later, run `dhir2b --update` (see [Upgrading](#upgrading)). To remove it, run `pipx uninstall dhir2b-cli`.
 
 > **Avoid plain `pip install` into your main Python.** dhir2b depends on PyTorch and Hugging Face Transformers, which pull in newer versions of common packages such as pydantic 2. Installing those into a Python you use for other things can break other tools (for example, ones that need pydantic 1). pipx or a virtual environment keeps them separate.
 
@@ -69,6 +69,7 @@ dhir2b --download                         # download the model for offline use
 dhir2b --offline                          # never use the network
 dhir2b --model-info                       # model revision in use, what's downloaded, newer one available?
 dhir2b --clean-cache                      # delete old downloaded model revisions
+dhir2b --update                           # upgrade dhir2b to the latest release
 ```
 
 From a clone without installing: `python dhir2b.py`, which takes the same options.
@@ -124,19 +125,23 @@ To set up a machine with no internet, copy `~/.cache/huggingface/hub/models--zen
 
 ### Upgrading dhir2b
 
-New versions are published on the [Releases page](https://github.com/sriharshav/dhir2b-cli/releases). Check which one you have with `dhir2b --version`.
-
-To upgrade, reinstall with the new version's tag. For example, for v0.2.2:
-
 ```bash
-pipx install --force git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.2
+dhir2b --update
 ```
 
-Your downloaded model, prompt history and settings are kept.
+It checks the [Releases page](https://github.com/sriharshav/dhir2b-cli/releases) for a newer version and upgrades the same way you installed it (pipx, or pip in a virtual environment). If you're up to date, it says so and changes nothing. Your downloaded model and prompt history are kept. It needs the network, so it won't run in offline mode.
 
-> `pipx upgrade dhir2b-cli` doesn't work here. pipx remembers the exact tag you installed and reinstalls that same version. dhir2b isn't on PyPI, so there's no package index for pipx to check.
+`dhir2b --version` shows the version you have.
 
-From a clone, run `git pull`. An editable install (`pip install -e .`) picks up the new code straight away; rerun `.venv/bin/pip install -e .` if the release notes mention new dependencies.
+**Upgrading by hand.** dhir2b 0.2.2 and earlier don't have `--update`, so upgrade from those once with:
+
+```bash
+pipx install --force git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.3
+```
+
+> `pipx upgrade dhir2b-cli` doesn't work here. pipx remembers the exact tag you installed and reinstalls that same version. dhir2b isn't on PyPI, so there's no package index for pipx to check. `dhir2b --update` handles this for you.
+
+**From a clone,** `--update` tells you to run `git pull` instead of changing your working copy. An editable install (`pip install -e .`) picks up the new code straight away; rerun `.venv/bin/pip install -e .` if the release notes mention new dependencies.
 
 ### Model updates
 
@@ -144,7 +149,7 @@ dhir2b uses one specific, reviewed revision of Dhīr 2B (see [Notes](#notes)), s
 
 1. **Check:** `dhir2b --model-info` shows the revision in use and whether ZenteiQ has published a newer one.
 2. **Wait for a dhir2b release.** After the new model code is reviewed, a new dhir2b version moves to it, and the release notes say so.
-3. **Upgrade dhir2b** as above. The next online run downloads the new model (~3.8 GB). To do it in advance, for example before going offline, run `dhir2b --download`.
+3. **Upgrade dhir2b** with `dhir2b --update`. The next online run downloads the new model (~3.8 GB). To do it in advance, for example before going offline, run `dhir2b --download`.
 4. **Free the space** used by the old model:
 
    ```bash

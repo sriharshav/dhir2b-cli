@@ -181,3 +181,80 @@ def test_model_info_offline_skips_network(monkeypatch, capsys):
     dhir2b.model_info()
     out = capsys.readouterr().out
     assert "not downloaded yet" in out and "not checked (offline mode)" in out
+
+
+@pytest.mark.parametrize("v, parsed", [("v0.2.2", (0, 2, 2)), ("0.10.1", (0, 10, 1)), ("v1.0.0-rc1", (1, 0, 0))])
+def test_parse_version(v, parsed):
+    assert dhir2b._parse_version(v) == parsed
+
+
+def test_parse_version_orders_numerically():
+    assert dhir2b._parse_version("v0.10.0") > dhir2b._parse_version("v0.9.9")
+
+
+def test_update_command_pipx(monkeypatch):
+    monkeypatch.setattr(dhir2b.shutil, "which", lambda name: "/usr/local/bin/pipx")
+    assert dhir2b._update_command("pipx", "v9.9.9") == [
+        "/usr/local/bin/pipx", "install", "--force", "git+https://github.com/sriharshav/dhir2b-cli.git@v9.9.9",
+    ]
+
+
+def test_update_command_pip_uses_this_python():
+    cmd = dhir2b._update_command("pip", "v9.9.9")
+    assert cmd[:4] == [dhir2b.sys.executable, "-m", "pip", "install"]
+    assert cmd[-1].endswith("@v9.9.9")
+
+
+def test_update_command_editable_or_missing_pipx(monkeypatch):
+    assert dhir2b._update_command("editable", "v9.9.9") is None
+    monkeypatch.setattr(dhir2b.shutil, "which", lambda name: None)
+    assert dhir2b._update_command("pipx", "v9.9.9") is None
+
+
+def test_install_kind_detects_pipx(monkeypatch, tmp_path):
+    (tmp_path / "pipx_metadata.json").write_text("{}")
+    monkeypatch.setattr(dhir2b.sys, "prefix", str(tmp_path))
+    assert dhir2b._install_kind() == "pipx"
+
+
+def _patch_update(monkeypatch, latest, kind="pipx", returncode=0):
+    calls = []
+    monkeypatch.setattr(dhir2b, "OFFLINE", False)
+    monkeypatch.setattr(dhir2b, "_latest_release", lambda: (latest, "https://example/release"))
+    monkeypatch.setattr(dhir2b, "_install_kind", lambda: kind)
+    monkeypatch.setattr(dhir2b.shutil, "which", lambda name: "/bin/pipx")
+    monkeypatch.setattr(
+        dhir2b.subprocess, "run", lambda cmd: calls.append(cmd) or type("R", (), {"returncode": returncode})()
+    )
+    return calls
+
+
+def test_update_when_up_to_date_runs_nothing(monkeypatch, capsys):
+    calls = _patch_update(monkeypatch, f"v{dhir2b.__version__}")
+    dhir2b.update()
+    assert calls == [] and "is up to date" in capsys.readouterr().out
+
+
+def test_update_runs_pipx_for_newer_release(monkeypatch, capsys):
+    calls = _patch_update(monkeypatch, "v99.0.0")
+    dhir2b.update()
+    assert calls == [["/bin/pipx", "install", "--force", "git+https://github.com/sriharshav/dhir2b-cli.git@v99.0.0"]]
+    assert "Updated to v99.0.0" in capsys.readouterr().out
+
+
+def test_update_editable_only_suggests_git_pull(monkeypatch, capsys):
+    calls = _patch_update(monkeypatch, "v99.0.0", kind="editable")
+    dhir2b.update()
+    assert calls == [] and "git pull" in capsys.readouterr().out
+
+
+def test_update_reports_failure(monkeypatch):
+    _patch_update(monkeypatch, "v99.0.0", returncode=1)
+    with pytest.raises(SystemExit, match="Update failed"):
+        dhir2b.update()
+
+
+def test_update_refuses_offline(monkeypatch):
+    monkeypatch.setattr(dhir2b, "OFFLINE", True)
+    with pytest.raises(SystemExit, match="offline mode"):
+        dhir2b.update()
