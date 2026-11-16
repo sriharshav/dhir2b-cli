@@ -40,7 +40,7 @@ Install with [pipx](https://pipx.pypa.io), which gives dhir2b its own isolated e
 ```bash
 brew install pipx        # macOS; on Linux: python3 -m pip install --user pipx
 pipx ensurepath          # once, so ~/.local/bin is on your PATH (open a new terminal after)
-pipx install git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.1
+pipx install git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.2
 ```
 
 To remove it later, run `pipx uninstall dhir2b-cli`. To upgrade, see [Upgrading](#upgrading).
@@ -126,10 +126,10 @@ To set up a machine with no internet, copy `~/.cache/huggingface/hub/models--zen
 
 New versions are published on the [Releases page](https://github.com/sriharshav/dhir2b-cli/releases). Check which one you have with `dhir2b --version`.
 
-To upgrade, reinstall with the new version's tag. For example, for v0.2.1:
+To upgrade, reinstall with the new version's tag. For example, for v0.2.2:
 
 ```bash
-pipx install --force git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.1
+pipx install --force git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.2
 ```
 
 Your downloaded model, prompt history and settings are kept.
