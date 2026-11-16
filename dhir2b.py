@@ -31,6 +31,7 @@ The Dhīr 2B model is by ZenteiQ AiTech Innovations (Apache 2.0) and is
 downloaded separately; this script does not include its weights or code.
 """
 
+__version__ = "0.1.0"
 __author__ = "Sriharsha Vardhan <sriharsha.vardhan@gmail.com>"
 __license__ = "Apache-2.0"
 
@@ -432,7 +433,7 @@ def _copy_command(history: list[dict], code_only: bool = False):
     CONSOLE.print(f"[dim](copied {what}: {len(text.splitlines())} lines, via {how})[/dim]")
 
 
-HISTORY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".dhir_history")
+HISTORY_FILE = os.environ.get("DHIR2B_HISTORY", os.path.expanduser("~/.dhir2b_history"))
 
 
 def _setup_history():
@@ -520,12 +521,13 @@ def _chat_loop(tokenizer, model, history, pending):
         history.append({"role": "assistant", "content": reply})
 
 
-if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description="Chat with Dhīr 2B (Ctrl+C to quit).")
+def main(argv: list[str] | None = None):
+    ap = argparse.ArgumentParser(prog="dhir2b", description="Chat with Dhīr 2B (Ctrl+C to quit).")
     ap.add_argument("--prompt", help="first message; the chat stays open afterwards")
     ap.add_argument("--examples", action="store_true", help="run the built-in examples and exit")
     ap.add_argument("--device", choices=["cuda", "mps", "cpu"])
-    args = ap.parse_args()
+    ap.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    args = ap.parse_args(argv)
 
     try:
         tok, mdl = load(args.device)
@@ -535,3 +537,7 @@ if __name__ == "__main__":
         examples(tok, mdl)
     else:
         interactive(tok, mdl, args.prompt)
+
+
+if __name__ == "__main__":
+    main()
