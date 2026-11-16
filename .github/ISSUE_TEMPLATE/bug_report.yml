@@ -1,0 +1,37 @@
+name: Bug report
+description: Something in dhir2b-cli isn't working
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! For problems with the model's answers themselves (wrong facts, bad translations),
+        please report to ZenteiQ on the [model page](https://huggingface.co/zenteiq-ai/Dhir-2B/discussions).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Terminal output
+      description: Paste the relevant output or traceback.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: dhir2b version
+      description: Output of `dhir2b --version`
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: System
+      description: OS, chip / GPU, RAM, Python version, terminal app
+      placeholder: macOS 15, M1, 8 GB, Python 3.13, iTerm2
+    validations:
+      required: true

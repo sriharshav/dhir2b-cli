@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check .
+
+  test:
+    # The model itself (3.8 GB) isn't downloaded in CI; tests cover the pure helpers.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.10", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install CPU-only PyTorch (Linux)
+        if: runner.os == 'Linux'
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Install package
+        run: pip install . pytest
+      - name: CLI starts
+        run: dhir2b --version && dhir2b --help
+      - name: Tests
+        run: pytest -q tests

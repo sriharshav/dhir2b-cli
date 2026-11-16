@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions about the Dhīr 2B model
+    url: https://huggingface.co/zenteiq-ai/Dhir-2B/discussions
+    about: Model quality, training and licensing questions go to ZenteiQ.
