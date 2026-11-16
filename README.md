@@ -40,7 +40,7 @@ Install with [pipx](https://pipx.pypa.io), which gives dhir2b its own isolated e
 ```bash
 brew install pipx        # macOS; on Linux: python3 -m pip install --user pipx
 pipx ensurepath          # once, so ~/.local/bin is on your PATH (open a new terminal after)
-pipx install git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.0
+pipx install git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.1
 ```
 
 To upgrade later, run `pipx upgrade dhir2b-cli`; to remove it, run `pipx uninstall dhir2b-cli`.

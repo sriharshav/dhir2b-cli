@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-15
+
 ### Added
 
 - After each answer, a line shows the response time, time to first token, token count, speed (tokens/s), mode and device.
@@ -46,5 +48,6 @@ Withdrawn: installing it from git failed on Homebrew's Python (fixed in 0.2.0). 
 - Loads weights straight onto the GPU and warms up at start; runs fully offline after the first download.
 - The model revision is pinned because the model loads custom code.
 
-[Unreleased]: https://github.com/sriharshav/dhir2b-cli/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/sriharshav/dhir2b-cli/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/sriharshav/dhir2b-cli/releases/tag/v0.2.1
 [0.2.0]: https://github.com/sriharshav/dhir2b-cli/releases/tag/v0.2.0
