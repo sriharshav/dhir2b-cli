@@ -1,0 +1,6 @@
+torch
+transformers>=5
+accelerate
+huggingface_hub
+rich
+gnureadline; sys_platform == 'darwin'
