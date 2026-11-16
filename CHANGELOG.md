@@ -4,6 +4,15 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- `--model-info` shows the model revision in use, what's downloaded, and whether ZenteiQ has published a newer revision.
+- `--clean-cache` deletes old downloaded Dhīr 2B revisions and never the one in use. (Hugging Face's `hf cache prune` would delete the pinned model too.)
+
+### Fixed
+
+- The README said `pipx upgrade dhir2b-cli` upgrades dhir2b. It doesn't for tag-based installs; the new Upgrading section gives the working command and explains how model updates arrive.
+
 ## [0.2.1] - 2026-11-15
 
 ### Added

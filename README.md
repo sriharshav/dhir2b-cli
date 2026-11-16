@@ -43,7 +43,7 @@ pipx ensurepath          # once, so ~/.local/bin is on your PATH (open a new ter
 pipx install git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.1
 ```
 
-To upgrade later, run `pipx upgrade dhir2b-cli`; to remove it, run `pipx uninstall dhir2b-cli`.
+To remove it later, run `pipx uninstall dhir2b-cli`. To upgrade, see [Upgrading](#upgrading).
 
 > **Avoid plain `pip install` into your main Python.** dhir2b depends on PyTorch and Hugging Face Transformers, which pull in newer versions of common packages such as pydantic 2. Installing those into a Python you use for other things can break other tools (for example, ones that need pydantic 1). pipx or a virtual environment keeps them separate.
 
@@ -67,6 +67,8 @@ dhir2b --examples                         # Hindi Q&A, translation, document QA,
 dhir2b --device cpu                       # force CPU (cuda | mps | cpu)
 dhir2b --download                         # download the model for offline use
 dhir2b --offline                          # never use the network
+dhir2b --model-info                       # model revision in use, what's downloaded, newer one available?
+dhir2b --clean-cache                      # delete old downloaded model revisions
 ```
 
 From a clone without installing: `python dhir2b.py`, which takes the same options.
@@ -118,6 +120,41 @@ The startup line shows `(offline)` when it's on. If the model isn't downloaded y
 
 To set up a machine with no internet, copy `~/.cache/huggingface/hub/models--zenteiq-ai--Dhir-2B` from a machine that has run `dhir2b --download` into the same place, then use offline mode.
 
+## Upgrading
+
+### Upgrading dhir2b
+
+New versions are published on the [Releases page](https://github.com/sriharshav/dhir2b-cli/releases). Check which one you have with `dhir2b --version`.
+
+To upgrade, reinstall with the new version's tag. For example, for v0.2.1:
+
+```bash
+pipx install --force git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.1
+```
+
+Your downloaded model, prompt history and settings are kept.
+
+> `pipx upgrade dhir2b-cli` doesn't work here. pipx remembers the exact tag you installed and reinstalls that same version. dhir2b isn't on PyPI, so there's no package index for pipx to check.
+
+From a clone, run `git pull`. An editable install (`pip install -e .`) picks up the new code straight away; rerun `.venv/bin/pip install -e .` if the release notes mention new dependencies.
+
+### Model updates
+
+dhir2b uses one specific, reviewed revision of Dhīr 2B (see [Notes](#notes)), so a new model from ZenteiQ doesn't reach you automatically. Instead:
+
+1. **Check:** `dhir2b --model-info` shows the revision in use and whether ZenteiQ has published a newer one.
+2. **Wait for a dhir2b release.** After the new model code is reviewed, a new dhir2b version moves to it, and the release notes say so.
+3. **Upgrade dhir2b** as above. The next online run downloads the new model (~3.8 GB). To do it in advance, for example before going offline, run `dhir2b --download`.
+4. **Free the space** used by the old model:
+
+   ```bash
+   dhir2b --clean-cache
+   ```
+
+   It deletes only Dhīr 2B revisions that your dhir2b version no longer uses.
+
+> Don't use `hf cache prune` for this. Hugging Face's tool treats dhir2b's pinned model as unreferenced and deletes the model in use too, which means a 3.8 GB download again.
+
 ## Performance
 
 On an 8 GB M1 MacBook, dhir2b reaches the prompt in roughly 20–60 s: about 5 s to load, plus a one-time warm-up while macOS pages the weights into GPU memory. The warm-up is slower when RAM is tight, so close heavy apps for faster starts. After that, it generates about 11 tokens/s, and the model stays loaded until you quit.
@@ -143,7 +180,7 @@ Constants at the top of [dhir2b.py](dhir2b.py):
 
 ## Notes
 
-- The model ships custom architecture code, so it loads with `trust_remote_code=True`. `REVISION` pins it to a reviewed commit; read the new `modeling_dhir.py` before bumping it.
+- The model ships custom architecture code, so it loads with `trust_remote_code=True`. `REVISION` pins it to a reviewed commit, so the code that runs can't change without a dhir2b release. See [Model updates](#model-updates).
 - Thinking mode isn't supported by this model release. Answers are most reliable when you supply the source text (RAG).
 
 ## Contributing

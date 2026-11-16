@@ -133,6 +133,73 @@ def download():
     print(f"Done: {path}\nYou can now run `dhir2b --offline` (or set DHIR2B_OFFLINE=1).", file=sys.stderr)
 
 
+def _human_size(n: float) -> str:
+    """1536 -> '1.5 KB'."""
+    for unit in ("bytes", "KB", "MB", "GB"):
+        if n < 1024 or unit == "GB":
+            return f"{n:.0f} {unit}" if unit == "bytes" else f"{n:.1f} {unit}"
+        n /= 1024
+    return f"{n:.1f} GB"
+
+
+def _cached_revisions() -> tuple[object | None, list]:
+    """(cache_info, revisions of Dhīr 2B in the local Hugging Face cache)."""
+    from huggingface_hub import scan_cache_dir
+
+    try:
+        cache = scan_cache_dir()
+    except Exception:  # no cache directory yet
+        return None, []
+    for repo in cache.repos:
+        if repo.repo_id == MODEL_ID and repo.repo_type == "model":
+            return cache, sorted(repo.revisions, key=lambda r: r.last_modified, reverse=True)
+    return cache, []
+
+
+def model_info():
+    """Show the pinned model revision, what's downloaded, and whether ZenteiQ has a newer one."""
+    print(f"Model:     {MODEL_ID}")
+    print(f"Uses:      revision {REVISION[:7]} (pinned in dhir2b {__version__})")
+    _, revisions = _cached_revisions()
+    if not revisions:
+        print("Download:  not downloaded yet (run `dhir2b --download`)")
+    for r in revisions:
+        tag = "in use" if r.commit_hash == REVISION else "old, not used; remove with `dhir2b --clean-cache`"
+        print(f"Download:  revision {r.commit_hash[:7]}  {_human_size(r.size_on_disk):>9}  ({tag})")
+    if OFFLINE:
+        print("Upstream:  not checked (offline mode)")
+        return
+    try:
+        from huggingface_hub import HfApi
+
+        latest = HfApi().model_info(MODEL_ID).sha
+    except Exception as e:  # network or Hub error: report, don't crash
+        print(f"Upstream:  couldn't check ({type(e).__name__})")
+        return
+    if latest == REVISION:
+        print("Upstream:  up to date with ZenteiQ's latest revision")
+    else:
+        print(
+            f"Upstream:  ZenteiQ has published a newer revision ({latest[:7]}).\n"
+            "           dhir2b only uses reviewed revisions; a future dhir2b release will move to it.\n"
+            "           See https://github.com/sriharshav/dhir2b-cli/releases"
+        )
+
+
+def clean_cache():
+    """Delete downloaded Dhīr 2B revisions other than the one this dhir2b version uses."""
+    cache, revisions = _cached_revisions()
+    old = [r for r in revisions if r.commit_hash != REVISION]
+    if not old:
+        print("Nothing to clean: only the revision in use is downloaded.")
+        return
+    for r in old:
+        print(f"Removing old revision {r.commit_hash[:7]}")
+    strategy = cache.delete_revisions(*(r.commit_hash for r in old))
+    strategy.execute()  # files shared with the revision in use are kept
+    print(f"Freed {_human_size(strategy.expected_freed_size)}. Revision {REVISION[:7]} (in use) is untouched.")
+
+
 def load(device: str | None = None, warmup: bool = True):
     device = device or pick_device()
     mode = " (offline)" if OFFLINE else ""
@@ -620,11 +687,22 @@ def main(argv: list[str] | None = None):
         help="never use the network (or set DHIR2B_OFFLINE=1 to make this the default)",
     )
     ap.add_argument("--download", action="store_true", help="download the model for offline use, then exit")
+    ap.add_argument(
+        "--model-info", action="store_true",
+        help="show the model revision in use, what's downloaded, and whether a newer one exists",
+    )
+    ap.add_argument("--clean-cache", action="store_true", help="delete old downloaded model revisions, then exit")
     ap.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     args = ap.parse_args(argv)
 
     if args.download:
         download()
+        return
+    if args.model_info:
+        model_info()
+        return
+    if args.clean_cache:
+        clean_cache()
         return
     try:
         tok, mdl = load(args.device)

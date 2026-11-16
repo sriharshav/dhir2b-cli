@@ -29,6 +29,15 @@ CI runs the same checks on Linux and macOS. It doesn't download the model, so if
 - Update `README.md` and `CHANGELOG.md` when behaviour changes.
 - The model runs custom code from Hugging Face, so it's pinned to a reviewed revision (`REVISION`). If you bump it, read the new `modeling_dhir.py` and `configuration_dhir.py` first, and say in the PR that you did.
 
+## Moving to a new model revision (maintainers)
+
+When `dhir2b --model-info` reports a newer upstream revision:
+
+1. Read the diff of `modeling_dhir.py`, `configuration_dhir.py`, `chat_template.jinja` and `generation_config.json` on [Hugging Face](https://huggingface.co/zenteiq-ai/Dhir-2B/commits/main). The model code runs on users' machines.
+2. Update `REVISION` in `dhir2b.py` to the full 40-character commit hash, and update `GEN_KWARGS` if the sampling defaults changed.
+3. Try it: `dhir2b --download`, then chat, `--examples` and `--offline`.
+4. Release a new version. Say in the release notes and CHANGELOG that the model moved, to which revision, and that users should run `dhir2b --clean-cache` afterwards.
+
 ## Licence
 
 By contributing, you agree that your contributions are licensed under the [Apache License 2.0](LICENSE).
