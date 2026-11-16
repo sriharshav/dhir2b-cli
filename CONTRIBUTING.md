@@ -11,7 +11,7 @@ python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]" pytest
 ```
 
-The first `dhir2b` run downloads the model (~3.8 GB).
+The first `dhir2b` run downloads the model (~3.8 GB). Always work in a virtual environment like this one, not your main Python: dhir2b's dependencies can upgrade packages other tools rely on.
 
 ## Before opening a pull request
 

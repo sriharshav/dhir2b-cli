@@ -35,11 +35,19 @@ dhir>
 
 ## Install
 
+Install with [pipx](https://pipx.pypa.io), which gives dhir2b its own isolated environment and puts the `dhir2b` command on your PATH:
+
 ```bash
-pip install git+https://github.com/sriharshav/dhir2b-cli.git
+brew install pipx        # macOS; on Linux: python3 -m pip install --user pipx
+pipx ensurepath          # once, so ~/.local/bin is on your PATH (open a new terminal after)
+pipx install git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.0
 ```
 
-Or from a clone:
+To upgrade later, run `pipx upgrade dhir2b-cli`; to remove it, run `pipx uninstall dhir2b-cli`.
+
+> **Avoid plain `pip install` into your main Python.** dhir2b depends on PyTorch and Hugging Face Transformers, which pull in newer versions of common packages such as pydantic 2. Installing those into a Python you use for other things can break other tools (for example, ones that need pydantic 1). pipx or a virtual environment keeps them separate.
+
+Or from a clone, in a virtual environment:
 
 ```bash
 git clone https://github.com/sriharshav/dhir2b-cli.git

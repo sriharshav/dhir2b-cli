@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Changed
+
+- README recommends installing with pipx, and warns that plain `pip install` into a shared Python can break other tools (dhir2b's dependencies pull in pydantic 2).
+
 ## [0.2.0] - 2026-11-15
 
 ### Added
