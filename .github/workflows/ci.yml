@@ -19,6 +19,20 @@ jobs:
       - run: pip install ruff
       - run: ruff check .
 
+  build-old-tools:
+    # Homebrew's Python leaks its own old setuptools/packaging into pip's isolated
+    # build env. Build against those old versions so `pip install git+...` keeps
+    # working there (v0.1.0 broke on `license = "Apache-2.0"`).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - run: pip install "packaging==23.2" "setuptools==75.6.0"
+      - run: pip install --no-deps hatchling pathspec pluggy trove-classifiers
+      - run: pip wheel --no-build-isolation --no-deps -w dist .
+
   test:
     # The model itself (3.8 GB) isn't downloaded in CI; tests cover the pure helpers.
     strategy:

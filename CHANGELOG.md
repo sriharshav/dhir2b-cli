@@ -13,6 +13,11 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 - The startup line shows `(offline)` when offline mode is on.
 - Documentation states that dhir2b supports Dhīr 2B only.
+- Builds with hatchling instead of setuptools.
+
+### Fixed
+
+- `pip install git+https://github.com/sriharshav/dhir2b-cli.git` failed with Homebrew's Python (`project.license must be valid exactly by one definition`). Homebrew's old setuptools/packaging couldn't read the `license = "Apache-2.0"` string form, so the licence now uses the table form older tools understand. A CI job builds against those old versions to keep it working.
 
 ## [0.1.0] - 2026-11-15
 

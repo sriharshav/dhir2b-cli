@@ -1,14 +1,15 @@
 [build-system]
-requires = ["setuptools>=69"]
-build-backend = "setuptools.build_meta"
+# Homebrew's Python leaks its own old setuptools/packaging into pip's isolated build,
+# so keep metadata readable by older tools (see the `license` table below).
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "dhir2b-cli"
 dynamic = ["version"]
 description = "Terminal chat for ZenteiQ's Dhīr 2B model: streaming Markdown, syntax highlighting, offline, Apple Silicon friendly."
 readme = "README.md"
-license = "Apache-2.0"
-license-files = ["LICENSE"]
+license = { text = "Apache-2.0" }  # table form: older build tools can't parse the "Apache-2.0" string form
 authors = [{ name = "Sriharsha Vardhan", email = "sriharsha.vardhan@gmail.com" }]
 requires-python = ">=3.10"
 keywords = ["dhir", "llm", "indic", "chat", "cli", "transformers", "apple-silicon"]
@@ -17,6 +18,7 @@ classifiers = [
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
     "Natural Language :: English",
     "Natural Language :: Hindi",
     "Operating System :: MacOS",
@@ -44,11 +46,14 @@ Homepage = "https://github.com/sriharshav/dhir2b-cli"
 Issues = "https://github.com/sriharshav/dhir2b-cli/issues"
 Model = "https://huggingface.co/zenteiq-ai/Dhir-2B"
 
-[tool.setuptools]
-py-modules = ["dhir2b"]
+[tool.hatch.version]
+path = "dhir2b.py"
 
-[tool.setuptools.dynamic]
-version = { attr = "dhir2b.__version__" }
+[tool.hatch.build.targets.wheel]
+only-include = ["dhir2b.py"]
+
+[tool.hatch.build.targets.sdist]
+include = ["dhir2b.py", "tests/", "README.md", "CHANGELOG.md", "LICENSE", "pyproject.toml"]
 
 [tool.ruff]
 line-length = 120
