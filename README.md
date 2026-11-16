@@ -5,7 +5,7 @@
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
 [![Model: Dhīr 2B](https://img.shields.io/badge/%F0%9F%A4%97%20model-zenteiq--ai%2FDhir--2B-yellow)](https://huggingface.co/zenteiq-ai/Dhir-2B)
 
-A terminal chat for **[Dhīr 2B](https://huggingface.co/zenteiq-ai/Dhir-2B)**, ZenteiQ's compact model pretrained from scratch in India for English and 10 Indian languages. It runs locally, works offline, and is tuned to run well on Apple Silicon Macs with 8 GB of RAM.
+A terminal chat for **[Dhīr 2B](https://huggingface.co/zenteiq-ai/Dhir-2B)**, ZenteiQ's compact model pretrained from scratch in India for English and 10 Indian languages. It runs locally on macOS and Linux, works offline, and is tuned to run well even on an 8 GB Apple Silicon Mac.
 
 dhir2b is built for Dhīr 2B only. The model, its revision, chat format and sampling settings are fixed, and there's no option to load another model.
 
@@ -47,30 +47,53 @@ Dhīr 2B is a small language model that [ZenteiQ](https://www.zenteiq.ai) design
 - **Terminal-friendly**: Ctrl+C stops an answer, ↑/↓ recall earlier prompts (saved across sessions), and typing is blocked while the model answers.
 - **`/copy`** copies the last answer to the clipboard; **`/copy code`** copies just its code.
 - **Offline mode**: `dhir2b --offline` or `DHIR2B_OFFLINE=1` guarantees no network use; `dhir2b --download` prepares the model in advance.
-- **Light on small Macs**: loads weights straight onto the GPU, avoiding a swap-heavy double copy.
+- **Light on small machines**: loads weights straight onto the GPU, avoiding a swap-heavy double copy.
 - **Pinned model code**: Dhīr loads Python code from Hugging Face, so the model is pinned to a reviewed commit.
 
 ## Requirements
 
-- macOS (Apple Silicon recommended) or Linux; NVIDIA GPUs are used when available, otherwise CPU
+- **macOS:** Apple Silicon recommended; the GPU is used automatically
+- **Linux:** an NVIDIA GPU is used through CUDA when available, otherwise the CPU
 - Python 3.10+
 - About 4 GB of free RAM and 4 GB of disk for the model
 
 ## Install
 
-Install with [pipx](https://pipx.pypa.io), which gives dhir2b its own isolated environment and puts the `dhir2b` command on your PATH:
+Install with [pipx](https://pipx.pypa.io), which gives dhir2b its own isolated environment and puts the `dhir2b` command on your PATH. The first run downloads the model (~3.8 GB) to `~/.cache/huggingface`; to download it in advance, for example before going offline, run `dhir2b --download`.
+
+### macOS
+
+With [Homebrew](https://brew.sh):
 
 ```bash
-brew install pipx        # macOS; on Linux: python3 -m pip install --user pipx
-pipx ensurepath          # once, so ~/.local/bin is on your PATH (open a new terminal after)
+brew install pipx
+pipx ensurepath          # once, so ~/.local/bin is on your PATH; open a new terminal after
 pipx install git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.4
 ```
 
-To upgrade later, run `dhir2b --update` (see [Upgrading](#upgrading)). To remove it, see [Uninstalling](#uninstalling).
+On Apple Silicon, dhir2b uses the GPU automatically.
 
-> **Avoid plain `pip install` into your main Python.** dhir2b depends on PyTorch and Hugging Face Transformers, which pull in newer versions of common packages such as pydantic 2. Installing those into a Python you use for other things can break other tools (for example, ones that need pydantic 1). pipx or a virtual environment keeps them separate.
+### Linux
 
-Or from a clone, in a virtual environment:
+Install pipx from your distribution's packages:
+
+```bash
+sudo apt install pipx          # Debian 12+, Ubuntu 23.04+
+sudo dnf install pipx          # Fedora
+sudo pacman -S python-pipx     # Arch
+```
+
+On other distributions, see the [pipx installation guide](https://pipx.pypa.io/stable/how-to/install-pipx.html). Then:
+
+```bash
+pipx ensurepath          # once, so ~/.local/bin is on your PATH; open a new terminal after
+pipx install git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.4
+```
+
+- **GPU:** an NVIDIA GPU is used automatically through CUDA; otherwise dhir2b runs on the CPU, which is slower. The PyTorch download on Linux is several GB, because it includes NVIDIA's CUDA libraries.
+- **`/copy`** needs a clipboard tool: `wl-copy` (from wl-clipboard) on Wayland, or `xclip` or `xsel` on X11. Without one, dhir2b asks your terminal to copy instead, which many terminals support.
+
+### From source (macOS or Linux)
 
 ```bash
 git clone https://github.com/sriharshav/dhir2b-cli.git
@@ -79,7 +102,11 @@ python3 -m venv .venv
 .venv/bin/pip install -e .
 ```
 
-The first run downloads the model (~3.8 GB) to `~/.cache/huggingface`. To download it in advance, for example before going offline, run `dhir2b --download`.
+Then run `.venv/bin/dhir2b`.
+
+> **Avoid plain `pip install` into your main Python.** dhir2b depends on PyTorch and Hugging Face Transformers, which pull in newer versions of common packages such as pydantic 2. Installing those into a Python you use for other things can break other tools (for example, ones that need pydantic 1). pipx or a virtual environment keeps them separate.
+
+To upgrade later, run `dhir2b --update` (see [Upgrading](#upgrading)). To remove it, see [Uninstalling](#uninstalling).
 
 ## Usage
 
@@ -135,7 +162,7 @@ Once the model is downloaded, dhir2b loads it from your disk. Offline mode goes 
    dhir2b --offline
    ```
 
-   To always run offline, add this to your shell profile (for example `~/.zshrc`):
+   To always run offline, add this to your shell profile (`~/.zshrc` on macOS, usually `~/.bashrc` on Linux):
 
    ```bash
    export DHIR2B_OFFLINE=1
@@ -197,8 +224,8 @@ pipx uninstall dhir2b-cli   # 2. remove the program
 
 Then, if they apply to you:
 
-- **Offline setting:** if you added `export DHIR2B_OFFLINE=1` to your shell profile (for example `~/.zshrc`), remove that line.
-- **pipx itself:** if you installed pipx only for dhir2b, remove it with `brew uninstall pipx`, and delete the `export PATH="$PATH:$HOME/.local/bin"` line that `pipx ensurepath` added to your shell profile.
+- **Offline setting:** if you added `export DHIR2B_OFFLINE=1` to your shell profile (`~/.zshrc` on macOS, usually `~/.bashrc` on Linux), remove that line.
+- **pipx itself:** if you installed pipx only for dhir2b, remove it with `brew uninstall pipx` on macOS, or your package manager on Linux (for example `sudo apt remove pipx`). Also delete the `export PATH="$PATH:$HOME/.local/bin"` line that `pipx ensurepath` added to your shell profile.
 - **A clone:** delete the cloned folder, which includes its `.venv`.
 
 **Already uninstalled the program first?** Then delete these by hand. The paths are the defaults; they move if you set `HF_HOME`:
@@ -214,7 +241,9 @@ Newer versions of huggingface_hub keep large model files in a shared store (`~/.
 
 ## Performance
 
-On an 8 GB M1 MacBook, dhir2b reaches the prompt in roughly 20–60 s: about 5 s to load, plus a one-time warm-up while macOS pages the weights into GPU memory. The warm-up is slower when RAM is tight, so close heavy apps for faster starts. After that, it generates about 11 tokens/s, and the model stays loaded until you quit.
+Measured on an 8 GB M1 MacBook: dhir2b reaches the prompt in roughly 20–60 s, about 5 s to load plus a one-time warm-up while macOS pages the weights into GPU memory. The warm-up is slower when RAM is tight, so close heavy apps for faster starts. After that, it generates about 11 tokens/s, and the model stays loaded until you quit.
+
+Linux hasn't been benchmarked yet. Expect it to be faster with an NVIDIA GPU and slower on CPU only. The timing line after each answer shows the speed on your machine.
 
 ## Use from Python
 

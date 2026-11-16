@@ -4,6 +4,10 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Changed
+
+- README: separate macOS and Linux install sections (Linux covers apt, dnf and pacman, GPU/CPU and clipboard tools), and other sections now cover both systems.
+
 ## [0.2.4] - 2026-11-15
 
 ### Added
