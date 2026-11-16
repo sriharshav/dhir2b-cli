@@ -15,16 +15,18 @@
 
 """Terminal chat for Dhīr 2B (zenteiq-ai/Dhir-2B) on a Mac / CPU / CUDA.
 
+Built for Dhīr 2B only; there's no option to load another model.
+
 Usage:
-    python dhir2b.py                 # interactive chat (Ctrl+C to quit)
-    python dhir2b.py --prompt "..."  # start the chat with this message
-    python dhir2b.py --examples      # run the built-in examples
+    dhir2b                 # interactive chat (Ctrl+C to quit)
+    dhir2b --prompt "..."  # start the chat with this message
+    dhir2b --examples      # run the built-in examples
+    dhir2b --download      # download the model for offline use
+    dhir2b --offline       # never touch the network (or export DHIR2B_OFFLINE=1)
 
 In chat, Ctrl+C while the model is answering stops that answer;
 Ctrl+C at the prompt (or Ctrl+D) quits. ↑/↓ recall earlier prompts.
 Answers stream as rendered Markdown.
-
-Runs fully offline once the weights are downloaded (first run only).
 
 Model card: https://huggingface.co/zenteiq-ai/Dhir-2B
 The Dhīr 2B model is by ZenteiQ AiTech Innovations (Apache 2.0) and is
@@ -51,6 +53,19 @@ import sys
 import termios
 import time
 
+
+def _truthy(value: str | None) -> bool:
+    return (value or "").strip().lower() in ("1", "true", "yes", "on")
+
+
+# Offline mode: `--offline` for one run, or DHIR2B_OFFLINE=1 to make it the default.
+# It must be decided before huggingface_hub/transformers are imported, because they
+# read HF_HUB_OFFLINE at import time; that's why it's checked here and not in main().
+OFFLINE = _truthy(os.environ.get("DHIR2B_OFFLINE")) or "--offline" in sys.argv[1:]
+if OFFLINE:
+    os.environ["HF_HUB_OFFLINE"] = "1"
+    os.environ["TRANSFORMERS_OFFLINE"] = "1"
+
 # Enables ↑/↓ history and line editing in input(). Prefer GNU readline: macOS's
 # built-in libedit mishandles colour codes in the prompt.
 try:
@@ -74,10 +89,17 @@ logging.getLogger("torch.distributed.elastic.multiprocessing.redirects").setLeve
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, StoppingCriteria, TextStreamer
 
+# dhir2b is built for Dhīr 2B only: the model, its revision, chat format and sampling
+# settings are fixed here on purpose, and there's no option to load another model.
 MODEL_ID = "zenteiq-ai/Dhir-2B"
 # Pinned commit: the model runs custom code (trust_remote_code), so pin it to the
 # version that was reviewed. Bump deliberately after checking modeling_dhir.py.
 REVISION = "7cbe444cd1e45e25197cfa0f683b2cb575858169"
+
+NOT_DOWNLOADED = (
+    "Dhīr 2B isn't downloaded yet, and offline mode is on.\n"
+    "Connect to the internet and run `dhir2b --download` once (~3.8 GB)."
+)
 
 # Sampling defaults from the repo's generation_config.json.
 GEN_KWARGS = dict(
@@ -97,9 +119,23 @@ def pick_device() -> str:
     return "cpu"
 
 
+def download():
+    """Download Dhīr 2B (pinned revision) so later runs can be fully offline."""
+    if OFFLINE:
+        sys.exit("Can't download in offline mode. Unset DHIR2B_OFFLINE / drop --offline and retry.")
+    from huggingface_hub import snapshot_download
+
+    print(f"Downloading {MODEL_ID} (~3.8 GB, skips files you already have) ...", file=sys.stderr)
+    path = snapshot_download(MODEL_ID, revision=REVISION)
+    # Load the tokenizer once so transformers also caches the model's custom code.
+    AutoTokenizer.from_pretrained(MODEL_ID, revision=REVISION, trust_remote_code=True)
+    print(f"Done: {path}\nYou can now run `dhir2b --offline` (or set DHIR2B_OFFLINE=1).", file=sys.stderr)
+
+
 def load(device: str | None = None, warmup: bool = True):
     device = device or pick_device()
-    print(f"Loading {MODEL_ID} on {device} ...", file=sys.stderr)
+    mode = " (offline)" if OFFLINE else ""
+    print(f"Loading {MODEL_ID} on {device}{mode} ...", file=sys.stderr)
 
     def _load(local_only: bool):
         common = dict(revision=REVISION, trust_remote_code=True, local_files_only=local_only)
@@ -115,6 +151,8 @@ def load(device: str | None = None, warmup: bool = True):
     try:
         tokenizer, model = _load(local_only=True)  # cached: no network calls
     except OSError:
+        if OFFLINE:
+            sys.exit(NOT_DOWNLOADED)
         print("Not cached yet, downloading (~3.8 GB, one time) ...", file=sys.stderr)
         tokenizer, model = _load(local_only=False)
     model.eval()
@@ -526,9 +564,17 @@ def main(argv: list[str] | None = None):
     ap.add_argument("--prompt", help="first message; the chat stays open afterwards")
     ap.add_argument("--examples", action="store_true", help="run the built-in examples and exit")
     ap.add_argument("--device", choices=["cuda", "mps", "cpu"])
+    ap.add_argument(
+        "--offline", action="store_true",
+        help="never use the network (or set DHIR2B_OFFLINE=1 to make this the default)",
+    )
+    ap.add_argument("--download", action="store_true", help="download the model for offline use, then exit")
     ap.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     args = ap.parse_args(argv)
 
+    if args.download:
+        download()
+        return
     try:
         tok, mdl = load(args.device)
     except KeyboardInterrupt:

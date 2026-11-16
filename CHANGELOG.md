@@ -2,6 +2,18 @@
 
 All notable changes are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Offline mode: `--offline` for one run, or `DHIR2B_OFFLINE=1` to make it the default. It guarantees no network use, and if the model isn't downloaded yet it says so and exits instead of trying the network.
+- `--download` fetches the model in advance for offline use.
+
+### Changed
+
+- The startup line shows `(offline)` when offline mode is on.
+- Documentation states that dhir2b supports Dhīr 2B only.
+
 ## [0.1.0] - 2026-11-15
 
 ### Added
@@ -15,4 +27,5 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - Loads weights straight onto the GPU and warms up at start; runs fully offline after the first download.
 - The model revision is pinned because the model loads custom code.
 
+[Unreleased]: https://github.com/sriharshav/dhir2b-cli/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/sriharshav/dhir2b-cli/releases/tag/v0.1.0

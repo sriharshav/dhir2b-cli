@@ -7,6 +7,8 @@
 
 A terminal chat for **[Dhīr 2B](https://huggingface.co/zenteiq-ai/Dhir-2B)**, ZenteiQ's compact model pretrained from scratch in India for English and 10 Indian languages. It runs locally, works offline, and is tuned to run well on Apple Silicon Macs with 8 GB of RAM.
 
+dhir2b is built for Dhīr 2B only. The model, its revision, chat format and sampling settings are fixed, and there's no option to load another model.
+
 ```
 sriharshavardhan> Write a Python function to check if a number is prime
 dhir>
@@ -21,7 +23,7 @@ dhir>
 - **Streaming Markdown**: headings, bold and lists render as the answer streams, with syntax-highlighted code blocks.
 - **Terminal-friendly**: Ctrl+C stops an answer, ↑/↓ recall earlier prompts (saved across sessions), and typing is blocked while the model answers.
 - **`/copy`** copies the last answer to the clipboard; **`/copy code`** copies just its code.
-- **Private and offline**: after the first download, nothing leaves your machine.
+- **Offline mode**: `dhir2b --offline` or `DHIR2B_OFFLINE=1` guarantees no network use; `dhir2b --download` prepares the model in advance.
 - **Light on small Macs**: loads weights straight onto the GPU, avoiding a swap-heavy double copy.
 - **Pinned model code**: Dhīr loads Python code from Hugging Face, so the model is pinned to a reviewed commit.
 
@@ -46,7 +48,7 @@ python3 -m venv .venv
 .venv/bin/pip install -e .
 ```
 
-The first run downloads the model (~3.8 GB) to `~/.cache/huggingface`.
+The first run downloads the model (~3.8 GB) to `~/.cache/huggingface`. To download it in advance, for example before going offline, run `dhir2b --download`.
 
 ## Usage
 
@@ -55,6 +57,8 @@ dhir2b                                    # chat
 dhir2b --prompt "नमस्ते, आप कौन हैं?"       # chat, starting with this message
 dhir2b --examples                         # Hindi Q&A, translation, document QA, tool calling
 dhir2b --device cpu                       # force CPU (cuda | mps | cpu)
+dhir2b --download                         # download the model for offline use
+dhir2b --offline                          # never use the network
 ```
 
 From a clone without installing: `python dhir2b.py`, which takes the same options.
@@ -76,13 +80,29 @@ The prompt shows your login name. Prompt history is saved in `~/.dhir2b_history`
 
 ## Offline use
 
-After the first download, dhir2b loads only from the local cache and makes no network calls. To guarantee it (for example on a plane):
+Once the model is downloaded, dhir2b loads it from your disk. Offline mode goes further and guarantees that nothing touches the network.
 
-```bash
-export HF_HUB_OFFLINE=1
-```
+1. **Download once** while you're online:
 
-To set up a machine with no internet, copy `~/.cache/huggingface/hub/models--zenteiq-ai--Dhir-2B` and `~/.cache/huggingface/modules/transformers_modules` from a machine that has run dhir2b.
+   ```bash
+   dhir2b --download
+   ```
+
+2. **Run offline.** For a single run:
+
+   ```bash
+   dhir2b --offline
+   ```
+
+   To always run offline, add this to your shell profile (for example `~/.zshrc`):
+
+   ```bash
+   export DHIR2B_OFFLINE=1
+   ```
+
+The startup line shows `(offline)` when it's on. If the model isn't downloaded yet, dhir2b says so and exits instead of trying the network. To download again later, remove the setting for that run: `DHIR2B_OFFLINE=0 dhir2b --download`.
+
+To set up a machine with no internet, copy `~/.cache/huggingface/hub/models--zenteiq-ai--Dhir-2B` from a machine that has run `dhir2b --download` into the same place, then use offline mode.
 
 ## Performance
 
@@ -111,7 +131,6 @@ Constants at the top of [dhir2b.py](dhir2b.py):
 
 - The model ships custom architecture code, so it loads with `trust_remote_code=True`. `REVISION` pins it to a reviewed commit; read the new `modeling_dhir.py` before bumping it.
 - Thinking mode isn't supported by this model release. Answers are most reliable when you supply the source text (RAG).
-- For less memory and faster startup, ZenteiQ also publishes a 4-bit GGUF build ([zenteiq-ai/Dhir-2B-GGUF](https://huggingface.co/zenteiq-ai/Dhir-2B-GGUF), 1.3 GB) for its own branch of llama.cpp.
 
 ## Contributing
 

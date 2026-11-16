@@ -69,3 +69,24 @@ def test_copy_command_copies_code(monkeypatch):
     history = [{"role": "assistant", "content": "See:\n```python\nprint(1)\n```"}]
     dhir2b._copy_command(history, code_only=True)
     assert copied["text"] == "print(1)"
+
+
+@pytest.mark.parametrize("value", ["1", "true", "TRUE", "yes", "on", " 1 "])
+def test_truthy_accepts_on_values(value):
+    assert dhir2b._truthy(value)
+
+
+@pytest.mark.parametrize("value", [None, "", "0", "false", "no", "off", "maybe"])
+def test_truthy_rejects_other_values(value):
+    assert not dhir2b._truthy(value)
+
+
+def test_model_is_fixed_to_dhir_2b():
+    assert dhir2b.MODEL_ID == "zenteiq-ai/Dhir-2B"
+    assert len(dhir2b.REVISION) == 40  # a full commit hash, not a moving branch name
+
+
+def test_download_refuses_in_offline_mode(monkeypatch):
+    monkeypatch.setattr(dhir2b, "OFFLINE", True)
+    with pytest.raises(SystemExit, match="offline mode"):
+        dhir2b.download()
