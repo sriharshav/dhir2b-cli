@@ -63,7 +63,7 @@ Install with [pipx](https://pipx.pypa.io), which gives dhir2b its own isolated e
 ```bash
 brew install pipx        # macOS; on Linux: python3 -m pip install --user pipx
 pipx ensurepath          # once, so ~/.local/bin is on your PATH (open a new terminal after)
-pipx install git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.3
+pipx install git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.4
 ```
 
 To upgrade later, run `dhir2b --update` (see [Upgrading](#upgrading)). To remove it, see [Uninstalling](#uninstalling).
@@ -160,7 +160,7 @@ It checks the [Releases page](https://github.com/sriharshav/dhir2b-cli/releases)
 **Upgrading by hand.** dhir2b 0.2.2 and earlier don't have `--update`, so upgrade from those once with:
 
 ```bash
-pipx install --force git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.3
+pipx install --force git+https://github.com/sriharshav/dhir2b-cli.git@v0.2.4
 ```
 
 > `pipx upgrade dhir2b-cli` doesn't work here. pipx remembers the exact tag you installed and reinstalls that same version. dhir2b isn't on PyPI, so there's no package index for pipx to check. `dhir2b --update` handles this for you.

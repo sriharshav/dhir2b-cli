@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-11-15
+
 ### Added
 
 - `dhir2b --purge` deletes everything dhir2b downloaded or saved: the model (through huggingface_hub, so files in its shared blob store are really removed), its cached code and prompt history. It lists what it will delete with sizes and asks first (`--yes` skips the question), then prints the right uninstall command.
@@ -75,7 +77,8 @@ Withdrawn: installing it from git failed on Homebrew's Python (fixed in 0.2.0). 
 - Loads weights straight onto the GPU and warms up at start; runs fully offline after the first download.
 - The model revision is pinned because the model loads custom code.
 
-[Unreleased]: https://github.com/sriharshav/dhir2b-cli/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/sriharshav/dhir2b-cli/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/sriharshav/dhir2b-cli/releases/tag/v0.2.4
 [0.2.3]: https://github.com/sriharshav/dhir2b-cli/releases/tag/v0.2.3
 [0.2.2]: https://github.com/sriharshav/dhir2b-cli/releases/tag/v0.2.2
 [0.2.1]: https://github.com/sriharshav/dhir2b-cli/releases/tag/v0.2.1
