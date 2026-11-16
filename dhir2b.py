@@ -33,7 +33,7 @@ The Dhīr 2B model is by ZenteiQ AiTech Innovations (Apache 2.0) and is
 downloaded separately; this script does not include its weights or code.
 """
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 __author__ = "Sriharsha Vardhan <sriharsha.vardhan@gmail.com>"
 __license__ = "Apache-2.0"
 

@@ -4,6 +4,8 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-11-15
+
 ### Added
 
 - `dhir2b --update` upgrades dhir2b to the latest GitHub release, the same way it was installed. pipx installs are reinstalled with the new tag (which `pipx upgrade` can't do), pip-in-venv installs are upgraded in place, and development clones are told to `git pull`. It reports when you're up to date and refuses in offline mode.
@@ -63,7 +65,8 @@ Withdrawn: installing it from git failed on Homebrew's Python (fixed in 0.2.0). 
 - Loads weights straight onto the GPU and warms up at start; runs fully offline after the first download.
 - The model revision is pinned because the model loads custom code.
 
-[Unreleased]: https://github.com/sriharshav/dhir2b-cli/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/sriharshav/dhir2b-cli/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/sriharshav/dhir2b-cli/releases/tag/v0.2.3
 [0.2.2]: https://github.com/sriharshav/dhir2b-cli/releases/tag/v0.2.2
 [0.2.1]: https://github.com/sriharshav/dhir2b-cli/releases/tag/v0.2.1
 [0.2.0]: https://github.com/sriharshav/dhir2b-cli/releases/tag/v0.2.0
