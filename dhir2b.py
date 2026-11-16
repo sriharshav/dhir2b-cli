@@ -65,6 +65,7 @@ OFFLINE = _truthy(os.environ.get("DHIR2B_OFFLINE")) or "--offline" in sys.argv[1
 if OFFLINE:
     os.environ["HF_HUB_OFFLINE"] = "1"
     os.environ["TRANSFORMERS_OFFLINE"] = "1"
+MODE = "offline" if OFFLINE else "online"
 
 # Enables ↑/↓ history and line editing in input(). Prefer GNU readline: macOS's
 # built-in libedit mishandles colour codes in the prompt.
@@ -317,9 +318,39 @@ def _busy_terminal():
         sys.stdout.flush()
 
 
+class _TokenClock(StoppingCriteria):
+    """Never stops generation; records when the first token arrived. generate() calls
+    stopping criteria once per new token, so this works with or without streaming."""
+
+    def __init__(self):
+        self.start = time.perf_counter()
+        self.first = None
+
+    def __call__(self, input_ids, scores, **kwargs):
+        if self.first is None:
+            self.first = time.perf_counter()
+        return False
+
+
+def format_stats(stats: dict, mode: str | None = None, device: str | None = None) -> str:
+    """One-line summary, e.g. '4.2 s · first token 0.5 s · 61 tokens · 16.4 tok/s · offline · mps'."""
+    parts = [f"{stats['seconds']:.1f} s"]
+    if stats.get("first_token_s") is not None:
+        parts.append(f"first token {stats['first_token_s']:.1f} s")
+    parts.append(f"{stats['tokens']} token{'' if stats['tokens'] == 1 else 's'}")
+    if stats.get("tokens_per_s"):
+        parts.append(f"{stats['tokens_per_s']:.1f} tok/s")
+    parts += [p for p in (mode, device) if p]
+    return " · ".join(parts)
+
+
 @torch.inference_mode()
-def chat(tokenizer, model, messages, tools=None, max_new_tokens=256, stream=False, **kwargs) -> str:
-    """Run one assistant turn. `messages` is an OpenAI-style list of {role, content}."""
+def chat(tokenizer, model, messages, tools=None, max_new_tokens=256, stream=False, stats=None, **kwargs) -> str:
+    """Run one assistant turn. `messages` is an OpenAI-style list of {role, content}.
+
+    Pass a dict as `stats` to get timing back: seconds, first_token_s, tokens,
+    tokens_per_s (generation speed after the first token) and stopped.
+    """
     inputs = tokenizer.apply_chat_template(
         messages,
         tools=tools,
@@ -333,6 +364,7 @@ def chat(tokenizer, model, messages, tools=None, max_new_tokens=256, stream=Fals
             gen.pop(k, None)
     # While generating, Ctrl+C stops this answer cleanly instead of killing the program.
     flag = _StopFlag()
+    clock = _TokenClock()
     prev = signal.signal(signal.SIGINT, lambda *_: setattr(flag, "stop", True))
     streamer = None
     try:
@@ -344,16 +376,28 @@ def chat(tokenizer, model, messages, tools=None, max_new_tokens=256, stream=Fals
             **inputs,
             max_new_tokens=max_new_tokens,
             streamer=streamer,
-            stopping_criteria=[flag],
+            stopping_criteria=[clock, flag],
             **gen,
         )
     finally:
         signal.signal(signal.SIGINT, prev)
         if isinstance(streamer, _MarkdownStreamer):
             streamer.close()
+    end = time.perf_counter()
     if flag.stop and stream:
         CONSOLE.print("[dim]\\[stopped][/dim]")
     new_tokens = out[0][inputs["input_ids"].shape[-1]:]
+    if stats is not None:
+        n = int(new_tokens.shape[-1])
+        first = None if clock.first is None else clock.first - clock.start
+        decode_s = end - clock.first if clock.first is not None else 0.0
+        stats.update(
+            seconds=end - clock.start,
+            first_token_s=first,
+            tokens=n,
+            tokens_per_s=(n - 1) / decode_s if n > 1 and decode_s > 0 else None,
+            stopped=flag.stop,
+        )
     # Keep special tokens when tools are in play so <tool_call> tags survive.
     return tokenizer.decode(new_tokens, skip_special_tokens=tools is None).strip()
 
@@ -504,9 +548,14 @@ def _new_history() -> list[dict]:
     return [{"role": "system", "content": SYSTEM_PROMPT}]
 
 
+def _banner(model):
+    print(HELP)
+    CONSOLE.print(f"[dim]Mode: [bold]{MODE}[/bold] · device: {model.device.type} · model: {MODEL_ID}[/dim]")
+
+
 def interactive(tokenizer, model, first_prompt: str | None = None):
     _setup_history()
-    print(HELP)
+    _banner(model)
     history = _new_history()
     pending = first_prompt
     if pending and readline is not None:
@@ -532,7 +581,7 @@ def _chat_loop(tokenizer, model, history, pending):
         if user == "/clear":
             history = _new_history()
             print("\033[2J\033[3J\033[H", end="")  # clear screen + scrollback, cursor home
-            print(HELP)
+            _banner(model)
             continue
         if user == "/reset":
             history = _new_history()
@@ -542,21 +591,23 @@ def _chat_loop(tokenizer, model, history, pending):
             _copy_command(history, code_only=user.endswith("code"))
             continue
         if user in ("/help", "/?"):
-            print(HELP)
+            _banner(model)
             continue
         if not user:
             continue
         history.append({"role": "user", "content": user})
+        stats = {}
         try:
             with _busy_terminal():
                 CONSOLE.print("[bold cyan]dhir>[/bold cyan]")
-                reply = chat(tokenizer, model, history, max_new_tokens=1024, stream=True)
+                reply = chat(tokenizer, model, history, max_new_tokens=1024, stream=True, stats=stats)
         except KeyboardInterrupt:
             # Ctrl+C landed just before generation began: drop this turn.
             history.pop()
             CONSOLE.print("[dim]\\[stopped][/dim]")
             continue
         history.append({"role": "assistant", "content": reply})
+        CONSOLE.print(f"[dim]⏱ {format_stats(stats, MODE, model.device.type)}[/dim]")
 
 
 def main(argv: list[str] | None = None):

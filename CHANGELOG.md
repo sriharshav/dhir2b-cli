@@ -4,6 +4,12 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 ## [Unreleased]
 
+### Added
+
+- After each answer, a line shows the response time, time to first token, token count, speed (tokens/s), mode and device.
+- The startup banner shows the mode (`online` / `offline`) and device.
+- `chat(..., stats={})` returns timing, and `format_stats()` formats it.
+
 ### Changed
 
 - README recommends installing with pipx, and warns that plain `pip install` into a shared Python can break other tools (dhir2b's dependencies pull in pydantic 2).

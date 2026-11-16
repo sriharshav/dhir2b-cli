@@ -90,3 +90,24 @@ def test_download_refuses_in_offline_mode(monkeypatch):
     monkeypatch.setattr(dhir2b, "OFFLINE", True)
     with pytest.raises(SystemExit, match="offline mode"):
         dhir2b.download()
+
+
+def test_format_stats_full_line():
+    stats = {"seconds": 4.23, "first_token_s": 0.51, "tokens": 61, "tokens_per_s": 16.44, "stopped": False}
+    assert dhir2b.format_stats(stats, "offline", "mps") == (
+        "4.2 s · first token 0.5 s · 61 tokens · 16.4 tok/s · offline · mps"
+    )
+
+
+def test_format_stats_single_token_and_no_mode():
+    stats = {"seconds": 0.3, "first_token_s": 0.3, "tokens": 1, "tokens_per_s": None, "stopped": True}
+    assert dhir2b.format_stats(stats) == "0.3 s · first token 0.3 s · 1 token"
+
+
+def test_token_clock_records_first_token_only():
+    clock = dhir2b._TokenClock()
+    assert clock(None, None) is False
+    first = clock.first
+    assert first is not None and first >= clock.start
+    clock(None, None)
+    assert clock.first == first

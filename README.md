@@ -84,7 +84,13 @@ From a clone without installing: `python dhir2b.py`, which takes the same option
 | `/reset` | Start a new conversation, keep the screen |
 | `/help` | List the commands |
 
-The prompt shows your login name. Prompt history is saved in `~/.dhir2b_history`; set `DHIR2B_HISTORY` to use another file. When output is piped to a file, answers are written as plain text.
+The prompt shows your login name. The startup banner shows the mode (`online` or `offline`) and device, and after each answer a dim line shows how long it took, for example:
+
+```
+⏱ 4.2 s · first token 0.5 s · 61 tokens · 16.4 tok/s · offline · mps
+```
+
+ Prompt history is saved in `~/.dhir2b_history`; set `DHIR2B_HISTORY` to use another file. When output is piped to a file, answers are written as plain text.
 
 ## Offline use
 
@@ -125,7 +131,7 @@ tok, model = load()
 print(chat(tok, model, [{"role": "user", "content": "Translate to Kannada: Good morning"}]))
 ```
 
-`chat()` also accepts `tools=[...]` for function calling; `parse_tool_calls()` extracts the calls. See `examples()` in [dhir2b.py](dhir2b.py).
+Pass `stats={}` to `chat()` to get timing back (`seconds`, `first_token_s`, `tokens`, `tokens_per_s`, `stopped`), and `format_stats()` turns it into the line shown in the chat. `chat()` also accepts `tools=[...]` for function calling; `parse_tool_calls()` extracts the calls. See `examples()` in [dhir2b.py](dhir2b.py).
 
 ## Customising
 
