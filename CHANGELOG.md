@@ -8,6 +8,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 
 - `dhir2b --purge` deletes everything dhir2b downloaded or saved: the model (through huggingface_hub, so files in its shared blob store are really removed), its cached code and prompt history. It lists what it will delete with sizes and asks first (`--yes` skips the question), then prints the right uninstall command.
 - README: an Uninstalling section covering a complete removal.
+- README: an "About Dhīr 2B" section: what the model is, its characteristics and capabilities, and its limits, with links to learn more.
 
 ### Changed
 

@@ -18,6 +18,29 @@ dhir>
      ...
 ```
 
+## About Dhīr 2B
+
+Dhīr 2B is a small language model that [ZenteiQ](https://www.zenteiq.ai) designed and pretrained from scratch in India, under the IndiaAI Mission. It's small enough to run on a laptop, offline, while staying strong at Indian languages.
+
+| | |
+|---|---|
+| **Size** | 2.03B parameters: 3.8 GB in BF16, about 1.1 GB at 4-bit. Large models often have 70B or more, so this one runs on ordinary laptops. |
+| **Dense** | All parameters are used for every token, unlike [Mixture-of-Experts](https://huggingface.co/blog/moe) models that activate only part of the network. That keeps memory use simple and predictable. (Its sibling, [Dhīr 5B](https://huggingface.co/zenteiq-ai/Dhir-5B-A1.7B), is a Mixture-of-Experts model.) |
+| **Languages** | English plus 10 Indian languages: Hindi, Bengali, Gujarati, Kannada, Malayalam, Marathi, Odia, Punjabi, Tamil and Telugu. |
+| **Indic tokenizer** | Its own [tokenizer](https://huggingface.co/learn/llm-course/chapter6/1), with 131K tokens designed for Indian scripts. Indian-language text uses fewer tokens, so it's faster and fits more into the context window. |
+| **Context** | 16K tokens, enough for long documents in a single prompt. |
+| **Text only** | It reads and writes text, code and structured data such as JSON, but not images or audio. |
+| **Instruction-tuned** | Trained to follow instructions with supervised fine-tuning, then [GRPO](https://arxiv.org/abs/2402.03300) reinforcement learning. |
+| **Tool calling** | It can reply with a structured call to your tool or API instead of plain text. See `examples()` in [dhir2b.py](dhir2b.py) and the [Transformers guide](https://huggingface.co/docs/transformers/en/chat_extras). |
+| **Efficient attention** | [Grouped-query attention](https://arxiv.org/abs/2305.13245) (fewer key/value heads) and [rotary position embeddings](https://arxiv.org/abs/2104.09864) keep memory low in long conversations. |
+| **Licence** | [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0), so commercial use is allowed. |
+
+**Good at:** translation between Indian languages and English, answering questions about a document you provide (the "reader" in [RAG](https://huggingface.co/learn/llm-course/chapter1/4)), summarising, sentiment, and short Python functions. ZenteiQ reports it as best in class among open models up to 3.2B on translation and Indian-language document QA. Those figures come from ZenteiQ's own evaluation; see the [model card](https://huggingface.co/zenteiq-ai/Dhir-2B).
+
+**Keep in mind:** it has no step-by-step "thinking" mode, its maths and coding are basic, and like any small model it can state wrong facts confidently. It's most reliable when you give it the source text. Running offline keeps your data on your machine, but it's still worth checking important answers.
+
+**Learn more:** [model card and benchmarks](https://huggingface.co/zenteiq-ai/Dhir-2B) · [AIKosh listing](https://aikosh.indiaai.gov.in/home/models/details/dhir_2b.html) · [ZenteiQ](https://www.zenteiq.ai)
+
 ## Features
 
 - **Streaming Markdown**: headings, bold and lists render as the answer streams, with syntax-highlighted code blocks.
